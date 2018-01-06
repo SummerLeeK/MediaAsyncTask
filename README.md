@@ -1,0 +1,4 @@
+# MediaAsyncTask
+MediaAsyncTask异步将音视频分离
+
+主要利用MediaExtraor和MediaMuxer
