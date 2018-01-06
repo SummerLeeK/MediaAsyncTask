@@ -117,45 +117,43 @@ public class SecondActivity extends AppCompatActivity implements View.OnClickLis
 
             } else if (mime.startsWith("audio/")) {
 
-                indexAudio = i;
             }
 
         }
 
 
-//        mAudioExtractor = new MediaExtractor();
-//        try {
-//            mAudioExtractor.setDataSource(Environment.getExternalStorageDirectory() + File.separator + "gala.m4a");
-//
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//
-//
-//        for (int i = 0; i < mAudioExtractor.getTrackCount(); i++) {
-//            String mime = mAudioExtractor.getTrackFormat(i).getString(MediaFormat.KEY_MIME);
-//            if (mime.startsWith("audio/")) {
-//                //音频
-//
-//                mAudioFormat = mAudioExtractor.getTrackFormat(i);
-//                int channel_count = mAudioFormat.getInteger("channel-count");
-//                int track_id = mAudioFormat.getInteger("track-id");
-//                int bitrate = mAudioFormat.getInteger("bitrate");
-//                int sample_rate = mAudioFormat.getInteger("sample-rate");
-////                int max_bitrate = mediaFormat.getInteger("max-bitrate");
-//                long duration = mAudioFormat.getLong("durationUs");
-//
-//
-//                Log.i("AudioAudioAudio", "channel_count" + channel_count + "track_id" + track_id + "bitrate" + bitrate +
-//                        "sample_rate" + sample_rate + "duration" + duration);
-//                indexAudio = i;
-//                mAudioExtractor.selectTrack(indexAudio);
-//            }
-//        }
+        mAudioExtractor = new MediaExtractor();
+        try {
+            mAudioExtractor.setDataSource(Environment.getExternalStorageDirectory() + File.separator + "gala.m4a");
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+        for (int i = 0; i < mAudioExtractor.getTrackCount(); i++) {
+            String mime = mAudioExtractor.getTrackFormat(i).getString(MediaFormat.KEY_MIME);
+            if (mime.startsWith("audio/")) {
+                //音频
+
+                mAudioFormat = mAudioExtractor.getTrackFormat(i);
+                int channel_count = mAudioFormat.getInteger("channel-count");
+                int track_id = mAudioFormat.getInteger("track-id");
+                int bitrate = mAudioFormat.getInteger("bitrate");
+                int sample_rate = mAudioFormat.getInteger("sample-rate");
+//                int max_bitrate = mediaFormat.getInteger("max-bitrate");
+                long duration = mAudioFormat.getLong("durationUs");
+
+
+                Log.i("AudioAudioAudio", "channel_count" + channel_count + "track_id" + track_id + "bitrate" + bitrate +
+                        "sample_rate" + sample_rate + "duration" + duration);
+                indexAudio = i;
+            }
+        }
 
 
         //开始分离视频
-        mediaParams = new MediaParams(mVideoExtractor, outputAudioPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4, indexAudio);
+        mediaParams = new MediaParams(mVideoExtractor, mAudioExtractor, outputVideoPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4, indexVideo, indexAudio);
 
         asyncTask.setListener(new MediaAsyncTask.onDealMediaListener() {
             @Override
@@ -183,10 +181,8 @@ public class SecondActivity extends AppCompatActivity implements View.OnClickLis
         });
 
 
-//        mAudioExtractor.release();
-//        mVideoExtractor.release();
+//        mediaCodec =MediaCodec.createDecoderByType()
 
-//        mVideoExtractor.release();
     }
 
 

@@ -35,8 +35,9 @@ public class MediaAsyncTask extends AsyncTask<MediaParams, Integer, Void> {
     @Override
     protected Void doInBackground(MediaParams... mediaParams) {
 //||mediaParams[0].getPath().endsWith("")||mediaParams[0].getPath().endsWith("m4a")
-
-        if (mediaParams[0].getPath().endsWith("mp3")) {
+        if (mediaParams[0].getAudioExtractor() != null) {
+            SynthesisVideo(mediaParams[0]);
+        } else if (mediaParams[0].getPath().endsWith("mp3")) {
             DetachAudio(mediaParams[0]);
         } else {
             DetachVideo(mediaParams[0]);
@@ -61,7 +62,7 @@ public class MediaAsyncTask extends AsyncTask<MediaParams, Integer, Void> {
      * @param mediaParams1
      */
     private void DetachAudio(MediaParams mediaParams1) {
-        MediaExtractor mediaExtractor = mediaParams1.getMediaExtractor();
+        MediaExtractor mediaExtractor = mediaParams1.getVideoExtractor();
         String path = mediaParams1.getPath();
         int format = mediaParams1.getFormat();
         int indexAudio = mediaParams1.getIndexVideo();
@@ -160,7 +161,7 @@ public class MediaAsyncTask extends AsyncTask<MediaParams, Integer, Void> {
      */
     private void DetachVideo(MediaParams mediaParams1) {
 
-        MediaExtractor mediaExtractor = mediaParams1.getMediaExtractor();
+        MediaExtractor mediaExtractor = mediaParams1.getVideoExtractor();
         String path = mediaParams1.getPath();
         int format = mediaParams1.getFormat();
         int indexVideo = mediaParams1.getIndexVideo();
@@ -234,6 +235,140 @@ public class MediaAsyncTask extends AsyncTask<MediaParams, Integer, Void> {
     }
 
 
+    private void SynthesisVideo(MediaParams params) {
+
+
+        MediaExtractor videoExtraor = params.getVideoExtractor();
+        MediaExtractor audioExtraor = params.getAudioExtractor();
+
+        int videoIndex = params.getIndexVideo();
+        int audioIndex = params.getIndexAudio();
+
+        int format = params.getFormat();
+        String outputpath = params.getPath();
+
+        videoExtraor.selectTrack(videoIndex);
+        audioExtraor.selectTrack(audioIndex);
+
+        long sizeVideo = videoExtraor.getTrackFormat(videoIndex).getLong("durationUs");
+        long sizeAudio = audioExtraor.getTrackFormat(audioIndex).getLong("durationUs");
+
+
+        long sumSize = sizeAudio + sizeVideo;
+
+        long cur_porgress = 0;
+        try {
+            MediaMuxer muxer = new MediaMuxer(outputpath, format);
+
+
+            int writeVideoIndex = muxer.addTrack(videoExtraor.getTrackFormat(videoIndex));
+            int writeAudioIndex = muxer.addTrack(audioExtraor.getTrackFormat(audioIndex));
+
+            muxer.start();
+
+            ByteBuffer buffer = ByteBuffer.allocate(500 * 1024);
+            long sampleVideoTime;
+            long sampleAudioTime;
+            {
+
+                videoExtraor.readSampleData(buffer, 0);
+                if (videoExtraor.getSampleFlags() == MediaExtractor.SAMPLE_FLAG_SYNC) {
+                    videoExtraor.advance();
+                }
+
+                videoExtraor.readSampleData(buffer, 0);
+                long secondTime = videoExtraor.getSampleTime();
+                videoExtraor.advance();
+                long thirdTime = videoExtraor.getSampleTime();
+                sampleVideoTime = Math.abs(thirdTime - secondTime);
+            }
+
+
+            {
+
+                audioExtraor.readSampleData(buffer, 0);
+                if (audioExtraor.getSampleFlags() == MediaExtractor.SAMPLE_FLAG_SYNC) {
+                    audioExtraor.advance();
+                }
+
+                audioExtraor.readSampleData(buffer, 0);
+                long secondTime = audioExtraor.getSampleTime();
+                audioExtraor.advance();
+                long thirdTime = audioExtraor.getSampleTime();
+                sampleAudioTime = Math.abs(thirdTime - secondTime);
+            }
+
+
+            videoExtraor.unselectTrack(videoIndex);
+            videoExtraor.selectTrack(videoIndex);
+
+            while (true) {
+
+                int sampleSize = videoExtraor.readSampleData(buffer, 0);
+                if (sampleSize < 0) {
+                    break;
+                }
+
+                MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+                info.offset = 0;
+                info.size = sampleSize;
+                info.flags = MediaCodec.BUFFER_FLAG_SYNC_FRAME;
+                info.presentationTimeUs += videoExtraor.getSampleTime();
+
+                muxer.writeSampleData(writeVideoIndex, buffer, info);
+
+                Log.e("MediaAsync", "video\t" + info.presentationTimeUs + "" + videoExtraor.getSampleTime());
+                cur_porgress += sampleVideoTime;
+
+                videoExtraor.advance();
+
+                if (listener != null) {
+                    listener.onProgress((float) (cur_porgress * 100.0 / sumSize));
+                }
+
+            }
+
+
+            while (true) {
+                int sampleSize = audioExtraor.readSampleData(buffer, 0);
+                if (sampleSize < 0) {
+                    break;
+                }
+
+                MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+                info.offset = 0;
+                info.size = sampleSize;
+                info.flags = MediaCodec.BUFFER_FLAG_SYNC_FRAME;
+                info.presentationTimeUs += audioExtraor.getSampleTime();
+
+                muxer.writeSampleData(writeAudioIndex, buffer, info);
+
+                cur_porgress += sampleAudioTime;
+
+                audioExtraor.advance();
+                Log.e("MediaAsync", "audio\t" + info.presentationTimeUs + "" + videoExtraor.getSampleTime());
+
+                if (listener != null) {
+                    listener.onProgress((float) (cur_porgress * 100.0 / sumSize));
+                }
+
+            }
+
+
+            muxer.stop();
+            muxer.release();
+            videoExtraor.release();
+            audioExtraor.release();
+
+
+            if (listener != null) {
+                listener.onFinsh();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
 
 
 }
