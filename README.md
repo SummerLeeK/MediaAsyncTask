@@ -2,3 +2,5 @@
 MediaAsyncTask异步将音视频分离
 
 主要利用MediaExtraor和MediaMuxer
+
+//对比ffmpeg命令行执行速度来说，MediaMuxer在处理差不多的视频上速度更快，但是效果没有ffmpeg好。
